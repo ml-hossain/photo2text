@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extraction History - Photo2Text</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .extraction-card:hover {
+            transform: translateY(-2px);
+            transition: transform 0.2s ease;
+        }
+        .confidence-badge {
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-image me-2"></i>Photo2Text
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('index') }}">
+                    <i class="fas fa-upload me-1"></i>Upload New
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="text-primary">
+                        <i class="fas fa-history me-2"></i>Extraction History
+                    </h2>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>New Extraction
+                    </a>
+                </div>
+
+                {% if extractions %}
+                    <div class="row">
+                        {% for extraction in extractions %}
+                            <div class="col-lg-6 col-xl-4 mb-4">
+                                <div class="card extraction-card shadow-sm h-100">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 text-truncate" title="{{ extraction.original_filename }}">
+                                            <i class="fas fa-file-image me-2 text-primary"></i>
+                                            {{ extraction.original_filename }}
+                                        </h6>
+                                        <span class="badge 
+                                            {% if extraction.confidence_score >= 80 %}bg-success
+                                            {% elif extraction.confidence_score >= 60 %}bg-warning
+                                            {% else %}bg-danger{% endif %} confidence-badge">
+                                            {{ "%.0f"|format(extraction.confidence_score) }}%
+                                        </span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-clock me-1"></i>
+                                                {{ extraction.upload_time }}
+                                            </small>
+                                        </div>
+                                        
+                                        {% if extraction.preview %}
+                                            <div class="mb-3">
+                                                <h6 class="text-muted mb-2">Preview:</h6>
+                                                <p class="small text-dark bg-light p-2 rounded" style="min-height: 80px;">
+                                                    {{ extraction.preview }}
+                                                </p>
+                                            </div>
+                                        {% else %}
+                                            <div class="mb-3">
+                                                <div class="alert alert-warning alert-sm">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    No text detected
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-footer bg-white">
+                                        <a href="{{ url_for('view_extraction', extraction_id=extraction.id) }}" 
+                                           class="btn btn-primary btn-sm w-100">
+                                            <i class="fas fa-eye me-1"></i>View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <p class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Showing {{ extractions|length }} extraction(s)
+                        </p>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-history fa-4x text-muted"></i>
+                        </div>
+                        <h4 class="text-muted">No extractions yet</h4>
+                        <p class="text-muted mb-4">Start by uploading your first image to extract text</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-upload me-2"></i>Upload First Image
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
