@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Image - Photo2Text{% endblock %}
+
+{% block head %}
+<style>
+    .upload-zone {
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        padding: 3rem;
+        text-align: center;
+        background-color: #f8f9ff;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .upload-zone:hover {
+        border-color: #764ba2;
+        background-color: #f0f2ff;
+    }
+    
+    .upload-zone.dragover {
+        border-color: #764ba2;
+        background-color: #e8ebff;
+        transform: scale(1.02);
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 1rem;
+    }
+    
+    .file-input {
+        display: none;
+    }
+    
+    .selected-file {
+        background-color: #e8f5e8;
+        border: 1px solid #4caf50;
+        padding: 1rem;
+        border-radius: 6px;
+        margin: 1rem 0;
+    }
+    
+    .result-area {
+        margin-top: 2rem;
+        display: none;
+    }
+    
+    .extracted-text {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 1.5rem;
+        white-space: pre-wrap;
+        font-family: 'Courier New', monospace;
+        min-height: 150px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .loading {
+        display: none;
+        text-align: center;
+        margin: 2rem 0;
+    }
+    
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Upload Image for Text Extraction</h2>
+    <p>Select an image file to extract text using OCR technology. Supported formats: PNG, JPG, JPEG, GIF, BMP, TIFF</p>
+    
+    <form id="uploadForm" enctype="multipart/form-data">
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📷</div>
+            <p><strong>Click to select a file</strong> or drag and drop an image here</p>
+            <p>Maximum file size: 16MB</p>
+            <input type="file" id="fileInput" name="file" class="file-input" accept="image/*">
+        </div>
+        
+        <div id="selectedFile" class="selected-file" style="display: none;">
+            <p><strong>Selected file:</strong> <span id="fileName"></span></p>
+            <button type="submit" class="btn">Extract Text</button>
+        </div>
+    </form>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Processing image and extracting text...</p>
+    </div>
+    
+    <div id="alertArea"></div>
+    
+    <div class="result-area" id="resultArea">
+        <h3>Extracted Text:</h3>
+        <div class="extracted-text" id="extractedText"></div>
+        <p style="margin-top: 1rem; color: #666;">
+            <small>Text has been saved to your history. <a href="{{ url_for('history') }}">View all extractions</a></small>
+        </p>
+    </div>
+</div>
+
+<script>
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const selectedFile = document.getElementById('selectedFile');
+    const fileName = document.getElementById('fileName');
+    const uploadForm = document.getElementById('uploadForm');
+    const loading = document.getElementById('loading');
+    const resultArea = document.getElementById('resultArea');
+    const extractedText = document.getElementById('extractedText');
+    const alertArea = document.getElementById('alertArea');
+    
+    // Click to select file
+    uploadZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // Drag and drop functionality
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+    
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+    });
+    
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelection();
+        }
+    });
+    
+    // File selection handler
+    fileInput.addEventListener('change', handleFileSelection);
+    
+    function handleFileSelection() {
+        const file = fileInput.files[0];
+        if (file) {
+            fileName.textContent = file.name;
+            selectedFile.style.display = 'block';
+            resultArea.style.display = 'none';
+            alertArea.innerHTML = '';
+        }
+    }
+    
+    // Form submission
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const file = fileInput.files[0];
+        if (!file) {
+            showAlert('Please select a file first.', 'error');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        loading.style.display = 'block';
+        selectedFile.style.display = 'none';
+        resultArea.style.display = 'none';
+        alertArea.innerHTML = '';
+        
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                extractedText.textContent = result.extracted_text || 'No text found in the image.';
+                resultArea.style.display = 'block';
+                showAlert('Text extracted successfully!', 'success');
+            } else {
+                showAlert(result.error || 'An error occurred during processing.', 'error');
+            }
+        } catch (error) {
+            showAlert('Network error. Please try again.', 'error');
+        } finally {
+            loading.style.display = 'none';
+        }
+    });
+    
+    function showAlert(message, type) {
+        alertArea.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    }
+</script>
+{% endblock %}
